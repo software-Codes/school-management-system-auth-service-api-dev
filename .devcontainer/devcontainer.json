@@ -1,0 +1,31 @@
+
+{
+    "name": "school-management-system-auth-service-api-dev",
+    "dockerFile": "Dockerfile.Dev",
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "terminal.integrated.shell.linux": "/bin/bash"
+        },
+        "extensions": [
+            "ms-dotnettools.csharp",
+            "ms-azuretools.vscode-docker",
+            "eamodio.gitlens",
+            "GitHub.copilot",
+            "ms-dotnettools.csdevkit"
+        ]
+      }
+    },
+    // "postCreateCommand": "dotnet restore ./cmg-azcontreg-worker.csproj",
+    "runArgs": ["--privileged"],
+    "mounts": [
+      "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "remoteEnv": {
+      "DOCKER_HOST": "unix:///var/run/docker.sock"
+    },
+      "features": {
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+      }
+    // "forwardPorts": [5050, 5051,1433]
+  }
