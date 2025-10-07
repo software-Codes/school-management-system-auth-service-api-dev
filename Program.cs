@@ -8,6 +8,7 @@ builder.Configuration.AddAzureKeyVaultIfEnabled(builder.Configuration);
 
 // Services
 builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddDatabaseServices(builder.Configuration);  // Register DbContext
 builder.Services.AddHealthChecksConfiguration(builder.Configuration);
 
 var app = builder.Build();
