@@ -1,6 +1,19 @@
 @__HostAddress = http://localhost:5009
 
-GET {{__HostAddress}}/weatherforecast/
+### Health Check
+GET {{__HostAddress}}/health
+Accept: application/json
+
+###
+
+### Health Check (Ready)
+GET {{__HostAddress}}/health/ready
+Accept: application/json
+
+###
+
+### Database Connection Test
+GET {{__HostAddress}}/db/test
 Accept: application/json
 
 ###
