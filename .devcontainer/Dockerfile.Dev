@@ -1,0 +1,12 @@
+# Dockerfile.dev
+
+# Use the official .NET 9 SDK image (Debian Bookworm)
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+
+# Install necessary build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    clang gcc libc6-dev libunwind-dev zlib1g-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Use dotnet CLI by default with args
+ENTRYPOINT ["dotnet"]
