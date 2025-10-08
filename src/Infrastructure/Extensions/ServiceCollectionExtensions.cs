@@ -6,6 +6,13 @@ using Azure.Security.KeyVault.Secrets;
 using AuthService.Infrastructure.Persistence.EfCore;
 using AuthService.Abstractions.Common;
 using AuthService.Infrastructure.Time;
+using AuthService.Infrastructure.Persistence.Seeding;
+using AuthService.Infrastructure.Persistence.Seeding.Interfaces;
+using AuthService.Infrastructure.Persistence.Seeding.Seeders;
+using AuthService.Abstractions.Security;
+using AuthService.Abstractions.Auth;
+using AuthService.Infrastructure.Security;
+using AuthService.Infrastructure.Middleware;
 
 namespace AuthService.Infrastructure.Extensions;
 
@@ -14,6 +21,56 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOpenApi();
+        
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
+        
+        return services;
+    }
+
+    public static IServiceCollection AddSecurityServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
+        services.AddScoped<ITokenService, AuthService.Infrastructure.Auth.JwtTokenService>();
+        
+        return services;
+    }
+
+    public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
+    {
+        var jwtSettings = configuration.GetSection("Jwt");
+        var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtSettings["Issuer"],
+                ValidAudience = jwtSettings["Audience"],
+                IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                    System.Text.Encoding.UTF8.GetBytes(secretKey)),
+                ClockSkew = TimeSpan.Zero
+            };
+        });
+
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(AuthService.Infrastructure.Auth.AuthorizationPolicies.SystemAdminOnly, policy =>
+                policy.RequireClaim(AuthService.Infrastructure.Auth.PermissionClaims.UserType, "SystemAdmin"));
+
+            options.AddPolicy(AuthService.Infrastructure.Auth.AuthorizationPolicies.RequireAuthentication, policy =>
+                policy.RequireAuthenticatedUser());
+        });
+
         return services;
     }
 
@@ -46,6 +103,17 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
+
+        return services;
+    }
+
+    public static IServiceCollection AddDatabaseSeedingServices(this IServiceCollection services)
+    {
+        services.AddScoped<IDatabaseSeeder, PermissionSeeder>();
+        services.AddScoped<IDatabaseSeeder, RoleSeeder>();
+        services.AddScoped<IDatabaseSeeder, SystemAdminSeeder>();
+
+        services.AddScoped<DatabaseSeederService>();
 
         return services;
     }

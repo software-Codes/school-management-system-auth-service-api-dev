@@ -1,0 +1,48 @@
+### System Admin Login - Success
+POST https://localhost:5001/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@platform.local",
+  "password": "ChangeMe123!"
+}
+
+###
+
+### System Admin Login - Wrong Password
+POST https://localhost:5001/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@platform.local",
+  "password": "WrongPassword"
+}
+
+###
+
+### System Admin Login - Wrong Email
+POST https://localhost:5001/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "wrong@example.com",
+  "password": "ChangeMe123!"
+}
+
+###
+
+### Version Check (No Auth Required)
+GET https://localhost:5001/version
+
+###
+
+### Health Check - Liveness
+GET https://localhost:5001/health/live
+
+###
+
+### Health Check - Readiness
+GET https://localhost:5001/health/ready
+
+###
+

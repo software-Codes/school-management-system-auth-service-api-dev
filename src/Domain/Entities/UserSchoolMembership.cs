@@ -10,7 +10,7 @@ public class UserSchoolMembership : BaseEntity
 
     public static UserSchoolMembership Create(
         Guid userId, 
-        Guid schoolId, 
+        Guid? schoolId, 
         Guid roleId, 
         DateTime utcNow)
     {
@@ -20,14 +20,14 @@ public class UserSchoolMembership : BaseEntity
             UserId = userId,
             SchoolId = schoolId,
             RoleId = roleId,
-            Status = MembershipStatus.Active,
+            Status = MembershipStatus.Pending,
             CreatedAtUtc = utcNow,
             UpdatedAtUtc = utcNow
         };
     }
 
     public Guid UserId { get; private set; }
-    public Guid SchoolId { get; private set; }
+    public Guid? SchoolId { get; private set; }
     public Guid RoleId { get; private set; }
     public MembershipStatus Status { get; private set; }
 

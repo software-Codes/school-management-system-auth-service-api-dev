@@ -20,6 +20,9 @@ public class IdentityDbContext : DbContext
     public DbSet<Username> Usernames => Set<Username>();
     public DbSet<UserSchoolMembership> UserSchoolMemberships => Set<UserSchoolMembership>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Role> Roles => Set<Role>();
+    public DbSet<Permission> Permissions => Set<Permission>();
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
     // School schema
     public DbSet<School> Schools => Set<School>();
@@ -180,6 +183,8 @@ public class IdentityDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("MembershipId");
             
+            entity.Property(e => e.SchoolId).IsRequired(false); // Nullable for SystemAdmin
+            
             entity.Property(e => e.Status)
                 .HasMaxLength(20)
                 .HasConversion<string>()
@@ -223,6 +228,84 @@ public class IdentityDbContext : DbContext
             // Index for active token lookups
             entity.HasIndex(e => new { e.UserId, e.ExpiresAt, e.RevokedAt });
             entity.HasIndex(e => e.TokenHash).IsUnique();
+
+            entity.Ignore(e => e.DomainEvents);
+        });
+
+        // identity.Roles
+        modelBuilder.Entity<Role>(entity =>
+        {
+            entity.ToTable("Roles", "identity");
+            
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("RoleId");
+            
+            entity.Property(e => e.RoleCode)
+                .HasMaxLength(50)
+                .IsRequired();
+            
+            entity.Property(e => e.Description)
+                .HasMaxLength(500)
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAtUtc).HasColumnName("CreatedAt").HasColumnType("datetime2(3)");
+            entity.Property(e => e.UpdatedAtUtc).HasColumnName("UpdatedAt").HasColumnType("datetime2(3)");
+
+            // Unique constraint on RoleCode
+            entity.HasIndex(e => e.RoleCode).IsUnique();
+
+            entity.Ignore(e => e.DomainEvents);
+        });
+
+        // identity.Permissions
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.ToTable("Permissions", "identity");
+            
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("PermissionId");
+            
+            entity.Property(e => e.PermCode)
+                .HasMaxLength(100)
+                .IsRequired();
+            
+            entity.Property(e => e.Description)
+                .HasMaxLength(500)
+                .IsRequired();
+            
+            entity.Property(e => e.CreatedAtUtc).HasColumnName("CreatedAt").HasColumnType("datetime2(3)");
+            entity.Property(e => e.UpdatedAtUtc).HasColumnName("UpdatedAt").HasColumnType("datetime2(3)");
+
+            // Unique constraint on PermCode
+            entity.HasIndex(e => e.PermCode).IsUnique();
+
+            entity.Ignore(e => e.DomainEvents);
+        });
+
+        // identity.RolePermissions (many-to-many)
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.ToTable("RolePermissions", "identity");
+            
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).HasColumnName("RolePermissionId");
+            
+            entity.Property(e => e.CreatedAtUtc).HasColumnName("CreatedAt").HasColumnType("datetime2(3)");
+            entity.Property(e => e.UpdatedAtUtc).HasColumnName("UpdatedAt").HasColumnType("datetime2(3)");
+
+            // Foreign keys
+            entity.HasOne(e => e.Role)
+                .WithMany(r => r.RolePermissions)
+                .HasForeignKey(e => e.RoleId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.Permission)
+                .WithMany(p => p.RolePermissions)
+                .HasForeignKey(e => e.PermissionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Unique constraint: Role can have permission only once
+            entity.HasIndex(e => new { e.RoleId, e.PermissionId }).IsUnique();
 
             entity.Ignore(e => e.DomainEvents);
         });

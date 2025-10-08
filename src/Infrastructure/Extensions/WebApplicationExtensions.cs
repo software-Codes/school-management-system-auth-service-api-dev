@@ -1,26 +1,24 @@
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using AuthService.Infrastructure.Persistence.Seeding;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AuthService.Infrastructure.Extensions;
 
 public static class WebApplicationExtensions
 {
-    public static WebApplication MapHealthCheckEndpoints(this WebApplication app)
+    public static async Task<IApplicationBuilder> SeedDatabaseAsync(
+        this IApplicationBuilder app,
+        CancellationToken cancellationToken = default)
     {
-        app.MapHealthChecks("/health");
+        using var scope = app.ApplicationServices.CreateScope();
         
-        app.MapHealthChecks("/health/ready", new HealthCheckOptions
+        try
         {
-            Predicate = check => check.Tags.Contains("ready")
-        });
-
-        return app;
-    }
-
-    public static WebApplication MapDiagnosticEndpoints(this WebApplication app)
-    {
-        if (app.Environment.IsDevelopment())
+            var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeederService>();
+            await seeder.SeedAllAsync(cancellationToken);
+        }
+        catch
         {
-            app.MapOpenApi();
+            // Silently continue - app can still start
         }
 
         return app;

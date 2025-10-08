@@ -13,6 +13,7 @@ public class RefreshToken : BaseEntity
     public static RefreshToken Create(
         Guid userId,
         string tokenHash,
+        DateTime issuedAt,
         DateTime expiresAt,
         string? ipAddress,
         string? userAgent,
@@ -23,7 +24,7 @@ public class RefreshToken : BaseEntity
             Id = Guid.NewGuid(),
             UserId = userId,
             TokenHash = tokenHash,
-            IssuedAt = utcNow,
+            IssuedAt = issuedAt,
             ExpiresAt = expiresAt,
             IpAddress = ipAddress,
             UserAgent = userAgent,
@@ -46,7 +47,7 @@ public class RefreshToken : BaseEntity
     public bool IsRevoked => RevokedAt.HasValue;
     public bool IsActive => !IsRevoked && !IsExpired;
 
-    public void Revoke(string reason, Guid? replacedByTokenId, DateTime utcNow)
+    public void Revoke(string reason, DateTime utcNow, Guid? replacedByTokenId = null)
     {
         RevokedAt = utcNow;
         RevokedReason = reason;
@@ -54,3 +55,4 @@ public class RefreshToken : BaseEntity
         MarkAsUpdated(utcNow);
     }
 }
+
