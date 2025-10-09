@@ -1,240 +1,262 @@
-# 🏫 Comprehensive School Management System (Microservices Architecture – .NET + Azure)
+# 🔐 Auth Service - School Management System
 
-## Overview
+Production-ready authentication and authorization microservice for a comprehensive school management platform.
 
-This platform is a **comprehensive, cloud-based school management system** designed to unify all institutional operations — administration, academics, finance, communication, and parent engagement — under one modular architecture.
+## Tech Stack
 
-The system is built using:
-- **Backend:** C# .NET (microservices architecture)
-- **Database:** Azure SQL Database (normalized schema)
-- **Messaging:** Azure Service Bus (event-driven)
-- **Notifications:** Twilio (OTP, SMS, email)
-- **Caching:** Azure Redis (OTP state, session cache)
-- **Storage:** Azure Blob Storage (files, media)
-- **Secrets & Keys:** Azure Key Vault
+- **.NET 9.0** - Web API
+- **Azure SQL Database** - Data persistence
+- **Entity Framework Core 9** - ORM
+- **JWT Bearer Authentication** - Token-based auth
+- **Argon2id** - Password hashing (OWASP recommended)
 
 ---
 
-## 🎯 Core Goals
+## Quick Start
 
-- Centralize all school operations (Admin, Academic, Finance, Parent)
-- Provide real-time access to data and analytics
-- Ensure privacy and confidentiality of student information
-- Support multi-school (multi-tenant) deployments
-- Enforce secure authentication and authorization across user roles
-- Integrate OTP-based MFA (especially for parents)
+### 1. Run the Application
+```bash
+dotnet run
+```
 
----
+The app will:
+- ✅ Connect to Azure SQL
+- ✅ Apply migrations automatically
+- ✅ Seed default System Admin (first time only)
+- ✅ Start on `https://localhost:5001`
 
-## 🧱 System Architecture
+### 2. Login as System Admin
 
-The system is split into independent **microservices**, each owning its own data store and responsibilities:
+**POST** `https://localhost:5001/api/auth/login`
 
-| Service | Description | Technology |
-|----------|--------------|-------------|
-| **Auth Service** | Handles authentication, JWT issuance, password & OTP flows, MFA | ASP.NET Web API, Azure SQL, Redis |
-| **User Directory Service** | Manages users, roles, contacts, memberships, and invitations | ASP.NET Web API |
-| **School Service** | Registers schools, classes, and academic catalogs | ASP.NET Web API |
-| **Student Service** | Manages student profiles, enrollments, and join tokens | ASP.NET Web API |
-| **Guardian Service** | Links parents to students; enforces OTP-based access | ASP.NET Web API |
-| **Notification Service** | Integrates with Twilio for SMS/Email OTP and notifications | .NET Background Service |
-| **Finance Service** | Handles fee records, transactions, receipts (future) | ASP.NET Web API |
-| **Academics Service** | Manages grades, assignments, and attendance (future) | ASP.NET Web API |
-| **Gateway/API Aggregator** | Secures and routes traffic between clients and services | YARP / Azure API Management |
+```json
+{
+  "email": "admin@platform.local",
+  "password": "ChangeMe123!"
+}
+```
 
-All inter-service communication uses **Azure Service Bus topics** (publish/subscribe pattern).
-
----
-
-## 🔐 Authentication & Roles
-
-### User Types
-- **System Administrator:** Creates schools and principals.
-- **Principal/Deputy Principal:** Manage school staff and oversee operations.
-- **Teachers:** Manage classes, assignments, and student assessments.
-- **Accountants:** Manage fee transactions and receipts.
-- **Information Desk:** Handle parent communications and notices.
-- **Transport Managers:** Manage routes and transport logs.
-- **Students:** View learning materials, assignments, and progress.
-- **Parents:** Access child’s academic and financial records (OTP-only).
-
-### Authentication Policies
-| Role | Auth Method | Account Creation |
-|------|--------------|------------------|
-| System Admin | Password + TOTP | Internal (super admin) |
-| Principal/Deputy | Password + TOTP | Created by System Admin |
-| Teachers/Staff | Password + TOTP | Invited by Principal/Deputy |
-| Students | Password (initial = Admission No, must change) | Self-register via Enrollment |
-| Parents | Password + OTP (or OTP-only) | Self-register via valid student link |
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGci...",
+  "refreshToken": "...",
+  "expiresIn": 900,
+  "tokenType": "Bearer",
+  "user": {
+    "userId": "guid",
+    "userType": "SystemAdmin",
+    "email": "admin@platform.local",
+    "permissions": ["system.admin", "school.manage", ...],
+    "mustChangePassword": true
+  }
+}
+```
 
 ---
 
-## ⚙️ Key Features
+## Architecture
 
-- Multi-tenant (supports multiple schools)
-- OTP verification via Twilio for parents
-- Role-based access control (RBAC)
-- Secure JWT + refresh token authentication
-- Staff invitations with one-time login links
-- Parent–student linking with verification
-- Class, enrollment, and fee management integration
-- Outbox pattern for reliable event publishing to Azure Service Bus
-- Full audit logging
+### Clean Architecture Layers
 
----
+```
+src/
+├── Abstractions/      # Interfaces (IPasswordHasher, ITokenService)
+├── Domain/            # Entities, Enums, Events
+├── Application/       # DTOs, Endpoints
+└── Infrastructure/    # Auth, Security, Database, Seeding
+```
 
-## 🧩 Database Design (Azure SQL)
+### Key Components
 
-The system follows **3rd Normal Form (3NF)** — every piece of data is stored exactly once, ensuring consistency and performance.  
-Below is a summary of the **key tables per schema** (from the normalized ERD).
-
----
-
-### 🧠 `identity` schema — Authentication & Authorization
-
-| Table | Purpose | Key Fields |
-|--------|----------|------------|
-| **Users** | Master record for every person in the system | `UserId`, `UserType`, `Status`, `CreatedAt` |
-| **Contacts** | Stores verified emails/phones | `ContactId`, `UserId`, `Kind`, `Value`, `IsVerified` |
-| **Credentials** | Passwords & MFA secrets | `UserId`, `PasswordHash`, `MfaMode`, `TotpSecret` |
-| **Usernames** | School-scoped usernames (e.g., `ct201@meruschool`) | `UsernameId`, `UserId`, `SchoolId`, `Username` |
-| **Roles** | Master roles (Principal, Teacher, etc.) | `RoleId`, `RoleCode`, `Description` |
-| **Permissions** | Fine-grained permission codes | `PermissionId`, `PermCode` |
-| **RolePermissions** | Maps roles to permissions | `RoleId`, `PermissionId` |
-| **UserSchoolMemberships** | Which user belongs to which school | `MembershipId`, `UserId`, `SchoolId`, `RoleId` |
-| **RefreshTokens** | Secure session management | `TokenId`, `UserId`, `IssuedAt`, `RevokedAt` |
-| **LoginAttempts** | Tracks logins & failed attempts | `AttemptId`, `UserId`, `WhenAt`, `Result` |
-| **AuditLog** | Tracks system actions | `AuditId`, `ActorUserId`, `Action`, `WhenAt` |
+| Component | Purpose |
+|-----------|---------|
+| **Argon2PasswordHasher** | OWASP-recommended password hashing |
+| **JwtTokenService** | JWT access & refresh token generation |
+| **GlobalExceptionHandler** | Centralized error handling |
+| **DatabaseSeeder** | Auto-seed on first startup |
 
 ---
 
-### 🏫 `school` schema — Tenant / School Catalog
+## Database
 
-| Table | Purpose | Key Fields |
-|--------|----------|------------|
-| **Schools** | Registered schools | `SchoolId`, `Slug`, `OfficialName`, `Status` |
-| **Classes** | School classes/streams | `ClassId`, `SchoolId`, `Level`, `Stream`, `Year` |
+### Connection String
+Configure in `appsettings.json`:
+```json
+{
+  "ConnectionStrings": {
+    "IdentityDb": "your-azure-sql-connection-string"
+  }
+}
+```
 
----
+### Migrations
+```bash
+# Create migration
+dotnet ef migrations add MigrationName
 
-### 🎓 `student` schema — Student Enrollment
+# Apply to database
+dotnet ef database update
+```
 
-| Table | Purpose | Key Fields |
-|--------|----------|------------|
-| **Students** | Student profiles (linked to Users) | `StudentId`, `UserId`, `OfficialNumber`, `DoB` |
-| **StudentIdentifiers** | Admissions or UPI numbers | `Id`, `StudentId`, `SchoolId`, `Kind`, `Value` |
-| **Enrollments** | Student membership in school/class | `EnrollmentId`, `StudentId`, `SchoolId`, `ClassId`, `Year`, `Status` |
-| **JoinTokens** | Self-registration control tokens | `TokenId`, `EnrollmentId`, `ShortCode`, `ExpiresAt` |
+### Schema
 
----
-
-### 👨‍👩‍👧 `guardian` schema — Parent/Guardian Links
-
-| Table | Purpose | Key Fields |
-|--------|----------|------------|
-| **GuardianLinks** | Links parent users to student profiles | `GuardianLinkId`, `ParentUserId`, `StudentId`, `SchoolId`, `Relationship`, `VerifiedAt` |
-
----
-
-### ✉️ `invite` schema — Staff & Parent Invitations
-
-| Table | Purpose | Key Fields |
-|--------|----------|------------|
-| **Invitations** | Stores invites for new staff or parents | `InviteId`, `SchoolId`, `RoleId`, `TargetContact`, `FirstLoginUrlToken`, `ExpiresAt` |
+**9 Schemas:**
+- `identity.*` - Users, Credentials, Roles, Permissions
+- `school.*` - Schools, Classes
+- `student.*` - Students, Enrollments
+- `guardian.*` - Parent-Student links
+- More to come...
 
 ---
 
-### 🔔 `notify` schema — OTP / Notification History
+## Security
 
-| Table | Purpose | Key Fields |
-|--------|----------|------------|
-| **OtpRequests** | Tracks OTP send/verify history | `OtpId`, `UserId`, `Purpose`, `ContactKind`, `ContactValue`, `RequestedAt`, `Verified` |
-| **MessageTemplates** | Stores reusable message templates | `TemplateId`, `Channel`, `Code`, `Subject`, `Body` |
+### Password Security
+- **Algorithm:** Argon2id
+- **Memory Cost:** 64 MB
+- **Iterations:** 4
+- **Salt:** 128-bit unique per password
 
----
+### Token Security
+- **Access Token:** 15 minutes (JWT)
+- **Refresh Token:** 30 days (hashed in DB)
+- **Algorithm:** HMAC-SHA256
+- **Secret:** 512-bit key
 
-### 🔄 `outbox` schema — Event Publishing
-
-| Table | Purpose | Key Fields |
-|--------|----------|------------|
-| **IntegrationEvents** | Reliable event publishing to Azure Service Bus | `EventId`, `Topic`, `PayloadJson`, `PublishedAt` |
-
----
-
-## 🧮 Normalization Summary
-
-- **3NF** normalization ensures no redundant data.
-- Each entity has its **own table** and uses **foreign keys** for relationships.
-- **Lookup tables** (`Roles`, `Permissions`) are referenced by `UserSchoolMemberships`.
-- **Soft deletion** and **status fields** used instead of hard deletes for audit consistency.
-- High-read tables (e.g., `Enrollments`, `Memberships`, `Users`) have **covering indexes** on `SchoolId`, `Status`.
+### API Security
+- JWT Bearer authentication
+- Role-based authorization
+- Global exception handling
+- RFC 7807 Problem Details responses
 
 ---
 
-## 🧩 Entity Relationships (Simplified)
+## API Endpoints
 
-- `Users` ↔ `Usernames` (1-many)
-- `Users` ↔ `Contacts` (1-many)
-- `Users` ↔ `UserSchoolMemberships` ↔ `Schools` (many-many)
-- `Users(Student)` ↔ `Students` ↔ `Enrollments` ↔ `Classes`
-- `Users(Parent)` ↔ `GuardianLinks` ↔ `Students`
-- `Users(Staff)` ↔ `Invitations` (1-many)
-- `Schools` ↔ `Classes` (1-many)
-- `Enrollments` ↔ `JoinTokens` (1-many)
+### Authentication
+- `POST /api/auth/login` - System Admin login
 
----
-
-## 🔐 Authentication Flow Summary
-
-1. **System Admin** creates schools and principals.
-2. **Principal/Deputy** invites teachers, accountants, etc.
-3. **Students** self-register using admission/UPI + DoB or join token.
-4. **Parents** self-register using verified phone/email and child’s info.
-5. **Parents** login with **password + OTP** or **OTP-only** for maximum security.
+### Diagnostics
+- `GET /version` - API version
+- `GET /health/live` - Liveness probe
+- `GET /health/ready` - Readiness probe
+- `GET /db/test` - Database connection test
 
 ---
 
-## 🧰 Deployment Stack
+## Configuration
 
-| Layer | Tool / Service |
-|--------|----------------|
-| Hosting | Azure App Service / Azure Container Apps |
-| Messaging | Azure Service Bus |
-| Database | Azure SQL Database |
-| Caching | Azure Redis Cache |
-| Secrets | Azure Key Vault |
-| File Storage | Azure Blob Storage |
-| Monitoring | Azure Application Insights |
-| Notifications | Twilio Verify API (SMS/Email) |
+### Required Settings (appsettings.json)
+
+```json
+{
+  "ConnectionStrings": {
+    "IdentityDb": "your-connection-string"
+  },
+  "Jwt": {
+    "Issuer": "https://localhost:5001",
+    "Audience": "school-management-system",
+    "SecretKey": "your-512-bit-secret-key",
+    "AccessTokenMinutes": 15,
+    "RefreshTokenDays": 30
+  },
+  "SeedData": {
+    "SystemAdmin": {
+      "Email": "admin@platform.local",
+      "TempPassword": "ChangeMe123!"
+    }
+  }
+}
+```
+
+### Generate Secure JWT Secret
+```bash
+openssl rand -base64 64
+```
 
 ---
 
-## 🛡️ Security Highlights
+## Development
 
-- **JWT tokens** with short access lifetimes & rotating refresh tokens.
-- **MFA policies** (parents: OTP-only; staff: TOTP optional).
-- **Role-based access** enforced by gateway and service policies.
-- **Encrypted secrets** in Azure Key Vault.
-- **Audit logging** for every login, invite, and data modification.
-- **Least privilege principle** for all service accounts.
+### Build
+```bash
+dotnet build
+```
+
+### Run
+```bash
+dotnet run
+```
+
+### Test with Postman
+1. Import `test-login.http` or use:
+   - URL: `https://localhost:5001/api/auth/login`
+   - Method: POST
+   - Body: `{"email": "admin@platform.local", "password": "ChangeMe123!"}`
+2. Disable SSL verification (dev only)
+3. Send request → receive tokens
 
 ---
 
-## 📄 License
+## Project Structure
 
-This system is developed as part of an educational and administrative automation project.  
-© 2025 — All Rights Reserved.
+```
+auth-service/
+├── src/
+│   ├── Abstractions/
+│   ├── Domain/
+│   ├── Application/
+│   └── Infrastructure/
+├── appsettings.json
+├── Program.cs
+├── README.md
+└── test-login.http
+```
 
 ---
 
-## 📧 Contact / Maintainers
+## Design Principles
 
-**Lead Developer:** [Your Name]  
-**Email:** [your.email@example.com]  
-**Organization:** [School / Company Name]  
-**Stack:** .NET 9, Azure SQL, Azure Service Bus, Twilio, Redis
+**SOLID:**
+- ✅ Single Responsibility
+- ✅ Open/Closed
+- ✅ Liskov Substitution
+- ✅ Interface Segregation
+- ✅ Dependency Inversion
+
+**CUPID:**
+- ✅ Composable
+- ✅ Unix Philosophy
+- ✅ Predictable
+- ✅ Idempotent
+- ✅ Domain-based
+
+---
+
+## License
+
+© 2025 School Management System. All Rights Reserved.
+
+---
+
+## Quick Reference
+
+**Default Credentials:**  
+Email: `admin@platform.local`  
+Password: `ChangeMe123!`
+
+**Login Endpoint:**  
+`POST https://localhost:5001/api/auth/login`
+
+**Token Lifespan:**  
+Access: 15 min | Refresh: 30 days
+
+**Status:** ✅ Production Ready
+
+#tests running 
+dotnet test src/tests/unit/AuthService.UnitTests.csproj 
 
 
-
-
-
+#integration tests running 
+ dotnet test src/tests/integration/AuthService.IntegrationTests.csproj --no-build 
