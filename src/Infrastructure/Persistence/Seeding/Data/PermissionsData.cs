@@ -14,6 +14,11 @@ public static class PermissionsData
         new() { PermCode = "school.manage", Description = "Create schools, assign principals" },
         new() { PermCode = "school.read", Description = "View school information" },
         new() { PermCode = "school.update", Description = "Update school information" },
+        // School Management (lines 13-16)
+        new() { PermCode = "schools.create", Description = "Create new schools" },
+        new() { PermCode = "schools.read", Description = "View school information" },
+        new() { PermCode = "schools.update", Description = "Update school information" },
+        new() { PermCode = "schools.delete", Description = "Delete schools" },
         
         // Staff Management
         new() { PermCode = "staff.invite", Description = "Invite school staff" },

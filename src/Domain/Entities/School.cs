@@ -39,6 +39,30 @@ public class School : BaseEntity
         };
     }
 
+    public void UpdateDetails(
+    string officialName,
+    string location,
+    string? emisCode,
+    string? email,
+    string? phone,
+    string? address,
+    DateTime utcNow)
+    {
+        if (string.IsNullOrWhiteSpace(officialName))
+            throw new ArgumentException("School name cannot be empty", nameof(officialName));
+
+        if (string.IsNullOrWhiteSpace(location))
+            throw new ArgumentException("Location cannot be empty", nameof(location));
+
+        OfficialName = officialName.Trim();
+        Location = location.Trim();
+        EmisCode = emisCode?.Trim();
+        Email = email;
+        Phone = phone;
+        Address = address;
+        MarkAsUpdated(utcNow);
+    }
+
     public string Slug { get; private set; } = null!;  // URL-friendly: "meruschool"
     public string OfficialName { get; private set; } = null!;
     public string? EmisCode { get; private set; }  // Government education code

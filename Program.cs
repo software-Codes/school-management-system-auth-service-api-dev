@@ -30,6 +30,7 @@ app.MapDiagnosticEndpoints();
 app.MapHealthCheckEndpoints();
 app.MapDatabaseEndpoints();
 app.MapAuthEndpoints();
+app.MapSchoolEndpoints();
 
 app.Run();
 
