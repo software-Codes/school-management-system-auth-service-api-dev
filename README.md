@@ -253,3 +253,10 @@ Password: `ChangeMe123!`
 Access: 15 min | Refresh: 30 days
 
 **Status:** ✅ Production Ready
+
+#tests running 
+dotnet test src/tests/unit/AuthService.UnitTests.csproj 
+
+
+#integration tests running 
+ dotnet test src/tests/integration/AuthService.IntegrationTests.csproj --no-build 

@@ -29,4 +29,11 @@
     <PackageReference Include="Polly" Version="8.6.4" />
   </ItemGroup>
 
+  <!-- Exclude test directories from main project compilation -->
+  <ItemGroup>
+    <Compile Remove="src/tests/**/*.cs" />
+    <EmbeddedResource Remove="src/tests/**/*" />
+    <None Remove="src/tests/**/*" />
+  </ItemGroup>
+
 </Project>

@@ -13,7 +13,7 @@ public static class RolesData
         new()
         {
             RoleCode = "SystemAdmin",
-            Description = "Platform super administrator with full access",
+            Description = "System Administrator with full access",
             PermissionCodes = new List<string>
             {
                 // System Admin has ALL permissions
@@ -48,7 +48,42 @@ public static class RolesData
                 "user.read",
                 "user.manage",
                 "user.delete",
+                "users.create",
+                "users.read",
+                "users.update",
+                "users.delete",
                 "audit.read"
+            }
+        },
+        
+        new()
+        {
+            RoleCode = "SchoolAdmin",
+            Description = "School administrator with full school management access",
+            PermissionCodes = new List<string>
+            {
+                "school.read",
+                "school.update",
+                "staff.invite",
+                "staff.read",
+                "staff.manage",
+                "student.read",
+                "student.manage",
+                "enrollment.read",
+                "enrollment.manage",
+                "finance.read",
+                "finance.manage",
+                "grades.read",
+                "grades.approve",
+                "attendance.read",
+                "class.read",
+                "class.manage",
+                "transport.read",
+                "transport.manage",
+                "communication.send",
+                "communication.read",
+                "reports.view",
+                "reports.generate"
             }
         },
         

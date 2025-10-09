@@ -63,6 +63,10 @@ public static class PermissionsData
         new() { PermCode = "user.read", Description = "View all user accounts" },
         new() { PermCode = "user.manage", Description = "Create/modify user accounts" },
         new() { PermCode = "user.delete", Description = "Delete user accounts" },
+        new() { PermCode = "users.create", Description = "Create new user accounts" },
+        new() { PermCode = "users.read", Description = "View user accounts" },
+        new() { PermCode = "users.update", Description = "Update user accounts" },
+        new() { PermCode = "users.delete", Description = "Delete user accounts" },
         
         // System Administration
         new() { PermCode = "system.admin", Description = "Full system administration access" },
