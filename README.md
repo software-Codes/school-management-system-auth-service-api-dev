@@ -254,9 +254,25 @@ Access: 15 min | Refresh: 30 days
 
 **Status:** ✅ Production Ready
 
-#tests running 
-dotnet test src/tests/unit/AuthService.UnitTests.csproj 
+## Testing
 
+### Interactive Test Runner
+```bash
+./test-runner.sh
+```
 
-#integration tests running 
- dotnet test src/tests/integration/AuthService.IntegrationTests.csproj --no-build 
+### Manual Test Commands
+```bash
+# Unit tests
+dotnet test src/tests/unit/AuthService.UnitTests.csproj
+
+# Integration tests
+dotnet test src/tests/integration/AuthService.IntegrationTests.csproj
+
+# All tests with detailed logging
+dotnet test --verbosity detailed --logger "console;verbosity=detailed"
+
+# Feature-specific tests
+dotnet test --filter "School" --verbosity detailed
+dotnet test --filter "SystemAdmin" --verbosity detailed
+```
