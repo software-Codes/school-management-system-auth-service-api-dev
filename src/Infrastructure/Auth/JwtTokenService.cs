@@ -33,9 +33,9 @@ public sealed class JwtTokenService : ITokenService
     }
 
     public string GenerateAccessToken(
-        Guid userId, 
-        string userType, 
-        List<string> permissions, 
+        Guid userId,
+        string userType,
+        List<string> permissions,
         Dictionary<string, string>? additionalClaims = null)
     {
         var claims = new List<Claim>
@@ -59,33 +59,39 @@ public sealed class JwtTokenService : ITokenService
             }
         }
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-            _configuration["Jwt:SecretKey"] ?? throw new InvalidOperationException("JWT secret key not configured")));
-        
+        // Read from Key Vault (Jwt--SecretKey) or appsettings (Jwt:SecretKey)
+        var secretKey = _configuration["Jwt--SecretKey"] ?? _configuration["Jwt:SecretKey"]
+            ?? throw new InvalidOperationException("JWT secret key not configured in Key Vault or appsettings");
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var now = _dateTimeProvider.UtcNow;
 
+        var issuer = _configuration["Jwt--Issuer"] ?? _configuration["Jwt:Issuer"];
+        var audience = _configuration["Jwt--Audience"] ?? _configuration["Jwt:Audience"];
+        var accessTokenMinutes = _configuration.GetValue<int>("Jwt:AccessTokenMinutes", 15);
+
         var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
+            issuer: issuer,
+            audience: audience,
             claims: claims,
             notBefore: now,
-            expires: now.AddMinutes(_configuration.GetValue<int>("Jwt:AccessTokenMinutes", 15)),
+            expires: now.AddMinutes(accessTokenMinutes),
             signingCredentials: credentials
         );
 
         var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-        
-        _logger.LogDebug("Generated access token for user {UserId} with {PermissionCount} permissions", 
+
+        _logger.LogDebug("Generated access token for user {UserId} with {PermissionCount} permissions",
             userId, permissions.Count);
 
         return tokenString;
     }
 
     public async Task<string> GenerateRefreshTokenAsync(
-        Guid userId, 
-        string ipAddress, 
-        string userAgent, 
+        Guid userId,
+        string ipAddress,
+        string userAgent,
         CancellationToken cancellationToken = default)
     {
         var now = _dateTimeProvider.UtcNow;
@@ -111,8 +117,8 @@ public sealed class JwtTokenService : ITokenService
     }
 
     public async Task<bool> ValidateRefreshTokenAsync(
-        string refreshToken, 
-        Guid userId, 
+        string refreshToken,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
         var tokenHash = HashToken(refreshToken);
@@ -120,18 +126,18 @@ public sealed class JwtTokenService : ITokenService
 
         var storedToken = await _context.RefreshTokens
             .FirstOrDefaultAsync(
-                t => t.TokenHash == tokenHash && 
-                     t.UserId == userId && 
-                     t.ExpiresAt > now && 
-                     t.RevokedAt == null, 
+                t => t.TokenHash == tokenHash &&
+                     t.UserId == userId &&
+                     t.ExpiresAt > now &&
+                     t.RevokedAt == null,
                 cancellationToken);
 
         return storedToken != null;
     }
 
     public async Task RevokeRefreshTokenAsync(
-        string refreshToken, 
-        string reason, 
+        string refreshToken,
+        string reason,
         CancellationToken cancellationToken = default)
     {
         var tokenHash = HashToken(refreshToken);
@@ -144,8 +150,8 @@ public sealed class JwtTokenService : ITokenService
         {
             storedToken.Revoke(reason, now);
             await _context.SaveChangesAsync(cancellationToken);
-            
-            _logger.LogInformation("Revoked refresh token for user {UserId}. Reason: {Reason}", 
+
+            _logger.LogInformation("Revoked refresh token for user {UserId}. Reason: {Reason}",
                 storedToken.UserId, reason);
         }
     }

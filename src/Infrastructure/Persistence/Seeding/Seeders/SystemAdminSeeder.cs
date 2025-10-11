@@ -40,7 +40,8 @@ public sealed class SystemAdminSeeder : IDatabaseSeeder
     {
         _logger.LogInformation("Starting System Admin seeding...");
 
-        var adminEmail = _configuration["SeedData:SystemAdmin:Email"] ?? "admin@platform.local";
+        // Read from Key Vault (SeedData--SystemAdmin--Email) or appsettings (SeedData:SystemAdmin:Email)
+        var adminEmail = _configuration["SeedData--SystemAdmin--Email"] ?? _configuration["SeedData:SystemAdmin:Email"] ?? "admin@platform.local";
         var now = _dateTimeProvider.UtcNow;
 
         var existingAdmin = await _context.Users
@@ -63,28 +64,29 @@ public sealed class SystemAdminSeeder : IDatabaseSeeder
 
         var user = User.Create(UserType.SystemAdmin, now);
         user.Activate(now);
-        
+
         await _context.Users.AddAsync(user, cancellationToken);
         _logger.LogInformation("Created System Admin user with ID: {UserId}", user.Id);
 
         var contact = Contact.Create(user.Id, ContactKind.Email, adminEmail, isPrimary: true, now);
-        contact.MarkAsVerified(now); 
-        
+        contact.MarkAsVerified(now);
+
         await _context.Contacts.AddAsync(contact, cancellationToken);
         _logger.LogInformation("Created contact for System Admin: {Email}", adminEmail);
 
         // Create credential with a temporary password using Argon2id
         // NOTE: In production, this should be changed immediately after first login
-        var tempPassword = _configuration["SeedData:SystemAdmin:TempPassword"] ?? "ChangeMe123!";
+        // Read from Key Vault (SeedData--SystemAdmin--TempPassword) or appsettings (SeedData:SystemAdmin:TempPassword)
+        var tempPassword = _configuration["SeedData--SystemAdmin--TempPassword"] ?? _configuration["SeedData:SystemAdmin:TempPassword"] ?? "ChangeMe123!";
         var passwordHash = _passwordHasher.HashPassword(tempPassword);
-        
+
         var credential = Credential.Create(
             user.Id,
             passwordHash,
             MfaMode.PasswordAndOtp,
             mustChangePassword: true, // Force password change on first login
             now);
-        
+
         await _context.Credentials.AddAsync(credential, cancellationToken);
         _logger.LogWarning("Created temporary password for System Admin using Argon2id. MUST BE CHANGED on first login!");
 
@@ -94,14 +96,14 @@ public sealed class SystemAdminSeeder : IDatabaseSeeder
             systemAdminRole.Id,
             now);
         membership.Activate(now);
-        
+
         await _context.UserSchoolMemberships.AddAsync(membership, cancellationToken);
         _logger.LogInformation("Assigned SystemAdmin role to user");
 
         await _context.SaveChangesAsync(cancellationToken);
-        
+
         _logger.LogInformation("System Admin seeding completed successfully!");
-        _logger.LogWarning("IMPORTANT: Default credentials - Email: {Email}, Password: {Password} (MUST CHANGE!)", 
+        _logger.LogWarning("IMPORTANT: Default credentials - Email: {Email}, Password: {Password} (MUST CHANGE!)",
             adminEmail, tempPassword);
     }
 }

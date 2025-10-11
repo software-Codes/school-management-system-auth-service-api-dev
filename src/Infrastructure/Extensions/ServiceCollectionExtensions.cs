@@ -21,10 +21,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOpenApi();
-        
+
         services.AddExceptionHandler<GlobalExceptionHandler>();
         services.AddProblemDetails();
-        
+
         return services;
     }
 
@@ -32,14 +32,19 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IPasswordHasher, Argon2PasswordHasher>();
         services.AddScoped<ITokenService, AuthService.Infrastructure.Auth.JwtTokenService>();
-        
+
         return services;
     }
 
     public static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {
-        var jwtSettings = configuration.GetSection("Jwt");
-        var secretKey = jwtSettings["SecretKey"] ?? throw new InvalidOperationException("JWT SecretKey not configured");
+        // Read from Key Vault (Jwt--SecretKey) or appsettings (Jwt:SecretKey)
+        var secretKey = configuration["Jwt--SecretKey"] ?? configuration["Jwt:SecretKey"]
+            ?? throw new InvalidOperationException("JWT SecretKey not configured in Key Vault or appsettings");
+        var issuer = configuration["Jwt--Issuer"] ?? configuration["Jwt:Issuer"]
+            ?? throw new InvalidOperationException("JWT Issuer not configured");
+        var audience = configuration["Jwt--Audience"] ?? configuration["Jwt:Audience"]
+            ?? throw new InvalidOperationException("JWT Audience not configured");
 
         services.AddAuthentication(options =>
         {
@@ -54,8 +59,8 @@ public static class ServiceCollectionExtensions
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
-                ValidIssuer = jwtSettings["Issuer"],
-                ValidAudience = jwtSettings["Audience"],
+                ValidIssuer = issuer,
+                ValidAudience = audience,
                 IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                     System.Text.Encoding.UTF8.GetBytes(secretKey)),
                 ClockSkew = TimeSpan.Zero
@@ -76,8 +81,9 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddDatabaseServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("IdentityDb")
-            ?? throw new InvalidOperationException("IdentityDb connection string is not configured.");
+        // Read from Key Vault (ConnectionStrings--IdentityDb) or appsettings (ConnectionStrings:IdentityDb)
+        var connectionString = configuration["ConnectionStrings--IdentityDb"] ?? configuration.GetConnectionString("IdentityDb")
+            ?? throw new InvalidOperationException("IdentityDb connection string not configured in Key Vault or appsettings");
 
         services.AddDbContext<IdentityDbContext>(options =>
         {
@@ -120,8 +126,9 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddHealthChecksConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        var connectionString = configuration.GetConnectionString("IdentityDb")
-            ?? throw new InvalidOperationException("IdentityDb connection string is not configured.");
+        // Read from Key Vault (ConnectionStrings--IdentityDb) or appsettings (ConnectionStrings:IdentityDb)
+        var connectionString = configuration["ConnectionStrings--IdentityDb"] ?? configuration.GetConnectionString("IdentityDb")
+            ?? throw new InvalidOperationException("IdentityDb connection string not configured in Key Vault or appsettings");
 
         services.AddHealthChecks()
             .AddSqlServer(
@@ -136,19 +143,26 @@ public static class ServiceCollectionExtensions
     public static IConfigurationBuilder AddAzureKeyVaultIfEnabled(this IConfigurationBuilder configuration, IConfiguration config)
     {
         var useKeyVault = config.GetValue<bool>("Azure:KeyVault:Enabled", false);
-        
+
         if (useKeyVault)
         {
-            var keyVaultUri = config["Azure:KeyVault:Uri"] 
+            var keyVaultUri = config["Azure:KeyVault:Uri"]
                 ?? throw new InvalidOperationException("Azure Key Vault URI is not configured.");
-            
+
             var secretClient = new SecretClient(
-                new Uri(keyVaultUri), 
+                new Uri(keyVaultUri),
                 new DefaultAzureCredential());
-            
+
             configuration.AddAzureKeyVault(secretClient, new KeyVaultSecretManager());
         }
 
         return configuration;
     }
+
+    public static IServiceCollection AddCommunicationServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton<AuthService.Abstractions.Common.ICommunicationService, AuthService.Infrastructure.Communication.AzureCommunicationService>();
+        return services;
+    }
+
 }

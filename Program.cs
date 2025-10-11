@@ -8,10 +8,11 @@ builder.Configuration.AddAzureKeyVaultIfEnabled(builder.Configuration);
 
 // Services
 builder.Services.AddApplicationServices(builder.Configuration);
-builder.Services.AddSecurityServices(builder.Configuration);  
+builder.Services.AddSecurityServices(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
-builder.Services.AddDatabaseServices(builder.Configuration); 
-builder.Services.AddDatabaseSeedingServices(); 
+builder.Services.AddDatabaseServices(builder.Configuration);
+builder.Services.AddDatabaseSeedingServices();
+builder.Services.AddCommunicationServices(builder.Configuration);
 builder.Services.AddHealthChecksConfiguration(builder.Configuration);
 
 var app = builder.Build();
@@ -20,7 +21,7 @@ var app = builder.Build();
 await app.SeedDatabaseAsync();
 
 // Middleware
-app.UseExceptionHandler(); 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
